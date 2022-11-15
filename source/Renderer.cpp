@@ -81,9 +81,19 @@ void Renderer::Render()
 		Vector2 edge1 = v0.position.GetXY() - v2.position.GetXY();
 		Vector2 edge2 = v1.position.GetXY() - v0.position.GetXY();
 
-		for (int px{}; px < m_Width; ++px)
+		int left{ (int)std::min(v0.position.x, std::min(v1.position.x, v2.position.x)) };
+		int top{  (int)std::min(v0.position.y, std::min(v1.position.y, v2.position.y)) };
+		int right{  (int)ceilf(std::max(v0.position.x, std::max(v1.position.x, v2.position.x))) };
+		int bottom{ (int)ceilf(std::max(v0.position.y, std::max(v1.position.y, v2.position.y))) };
+
+		if (left < 0) left = 0;
+		if (top < 0) top = 0;
+		if (right >= m_Width) right = m_Width - 1;
+		if (bottom >= m_Height) bottom = m_Height - 1;
+
+		for (int px{left}; px < right; ++px)
 		{
-			for (int py{}; py < m_Height; ++py)
+			for (int py{top}; py < bottom; ++py)
 			{
 				float w0, w1, w2;
 				Vector2 pixel{ (float)px, (float)py };
