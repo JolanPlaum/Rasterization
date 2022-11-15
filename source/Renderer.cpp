@@ -3,6 +3,7 @@
 #include "SDL_surface.h"
 
 //Project includes
+#include <iostream>
 #include "Renderer.h"
 #include "Math.h"
 #include "Matrix.h"
@@ -48,9 +49,9 @@ void Renderer::Render()
 	//Define Triangle - Vertices in WORLD space
 	std::vector<Vertex> vertices_world
 	{
-		{{ 0.f, 2.f, 0.f }},
-		{{ 1.f, 0.f, 0.f }},
-		{{ -1.f, 0.f, 0.f }}
+		{{ 0.f, 4.f, 2.f }, { 1, 0, 0 }},
+		{{ 3.f, -2.f, 2.f }, { 0, 1, 0 }},
+		{{ -3.f, -2.f, 2.f }, { 0, 0, 1 }}
 	};
 
 	//Define Triangle - Vertices in WORLD space
@@ -64,8 +65,7 @@ void Renderer::Render()
 		{
 			ColorRGB finalColor{ colors::Black };
 
-			if (TrianglePixelHitTest(vertices_screen, { (float)px, (float)py }))
-				finalColor = colors::White;
+			TrianglePixelHitTest(vertices_screen, { (float)px, (float)py }, finalColor);
 
 			//Update Color in Buffer
 			finalColor.MaxToOne();
@@ -91,7 +91,7 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 
 	for (int i{}; i < vertices_in.size(); ++i)
 	{
-		vertices_out.push_back({});
+		vertices_out.push_back({ vertices_in[i] });
 		vertices_out[i].position = m_Camera.viewMatrix.TransformPoint(vertices_in[i].position);
 
 		vertices_out[i].position.x = vertices_out[i].position.x / (vertices_out[i].position.z * m_AspectRatio * m_Camera.fov);
@@ -102,23 +102,32 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 	}
 }
 
-bool dae::Renderer::TrianglePixelHitTest(const std::vector<Vertex>& triangle, const Vector2& pixel)
+bool dae::Renderer::TrianglePixelHitTest(const std::vector<Vertex>& triangle, const Vector2& pixel, ColorRGB& color)
 {
 	//Make sure the passed vector is a triangle
 	if (triangle.size() != 3) return false;
 
+	float w0, w1, w2;
+
 	//Check if pixel is inside triangle
 	Vector2 edge = triangle[1].position.GetXY() - triangle[0].position.GetXY();
 	Vector2 pixelToSide = pixel - triangle[0].position.GetXY();
-	if (Vector2::Cross(edge, pixelToSide) < 0.f) return false;
+	if ((w2 = Vector2::Cross(edge, pixelToSide)) < 0.f) return false;
 
 	edge = triangle[2].position.GetXY() - triangle[1].position.GetXY();
 	pixelToSide = pixel - triangle[1].position.GetXY();
-	if (Vector2::Cross(edge, pixelToSide) < 0.f) return false;
+	if ((w0 = Vector2::Cross(edge, pixelToSide)) < 0.f) return false;
 
 	edge = triangle[0].position.GetXY() - triangle[2].position.GetXY();
 	pixelToSide = pixel - triangle[2].position.GetXY();
-	if (Vector2::Cross(edge, pixelToSide) < 0.f) return false;
+	if ((w1 = Vector2::Cross(edge, pixelToSide)) < 0.f) return false;
+
+	float total = w0 + w1 + w2;
+	w0 /= total;
+	w1 /= total;
+	w2 /= total;
+
+	color = triangle[0].color * w0 + triangle[1].color * w1 + triangle[2].color * w2;
 
 	return true;
 }

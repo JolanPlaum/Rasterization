@@ -51,6 +51,6 @@ namespace dae
 		//Function that transforms the vertices from the mesh from World space to Screen space
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const; //W1 Version
 
-		bool TrianglePixelHitTest(const std::vector<Vertex>& triangle, const Vector2& pixel);
+		bool TrianglePixelHitTest(const std::vector<Vertex>& triangle, const Vector2& pixel, ColorRGB& color);
 	};
 }
