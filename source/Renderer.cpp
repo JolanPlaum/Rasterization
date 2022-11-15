@@ -16,6 +16,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 {
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
+	m_AspectRatio = m_Width / (float)m_Height;
 
 	//Create Buffers
 	m_pFrontBuffer = SDL_GetWindowSurface(pWindow);
@@ -44,19 +45,17 @@ void Renderer::Render()
 	//Lock BackBuffer
 	SDL_LockSurface(m_pBackBuffer);
 
-	//Define Triangle - Vertices in NDC space
-	std::vector<Vector3> vertices_ndc
+	//Define Triangle - Vertices in WORLD space
+	std::vector<Vertex> vertices_world
 	{
-		{ 0.f, 0.5f, 1.f},
-		{ 0.5f, -0.5f, 1.f},
-		{ -0.5f, -0.5f, 1.f}
+		{{ 0.f, 2.f, 0.f }},
+		{{ 1.f, 0.f, 0.f }},
+		{{ -1.f, 0.f, 0.f }}
 	};
 
-	for (Vector3& vertex : vertices_ndc)
-	{
-		vertex.x = ((1.f + vertex.x) / 2.f) * m_Width;
-		vertex.y = ((1.f - vertex.y) / 2.f) * m_Height;
-	}
+	//Define Triangle - Vertices in WORLD space
+	std::vector<Vertex> vertices_screen;
+	VertexTransformationFunction(vertices_world, vertices_screen);
 
 	//RENDER LOGIC
 	for (int px{}; px < m_Width; ++px)
@@ -65,7 +64,7 @@ void Renderer::Render()
 		{
 			ColorRGB finalColor{ colors::Black };
 
-			if (TrianglePixelHitTest(vertices_ndc, { (float)px, (float)py }))
+			if (TrianglePixelHitTest(vertices_screen, { (float)px, (float)py }))
 				finalColor = colors::White;
 
 			//Update Color in Buffer
@@ -88,24 +87,37 @@ void Renderer::Render()
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
 {
 	//Todo > W1 Projection Stage
+	vertices_out.reserve(vertices_in.size());
+
+	for (int i{}; i < vertices_in.size(); ++i)
+	{
+		vertices_out.push_back({});
+		vertices_out[i].position = m_Camera.viewMatrix.TransformPoint(vertices_in[i].position);
+
+		vertices_out[i].position.x = vertices_out[i].position.x / (vertices_out[i].position.z * m_AspectRatio * m_Camera.fov);
+		vertices_out[i].position.y = vertices_out[i].position.y / (vertices_out[i].position.z * m_Camera.fov);
+
+		vertices_out[i].position.x = ((1.f + vertices_out[i].position.x) / 2.f) * m_Width;
+		vertices_out[i].position.y = ((1.f - vertices_out[i].position.y) / 2.f) * m_Height;
+	}
 }
 
-bool dae::Renderer::TrianglePixelHitTest(const std::vector<Vector3>& triangle, const Vector2& pixel)
+bool dae::Renderer::TrianglePixelHitTest(const std::vector<Vertex>& triangle, const Vector2& pixel)
 {
 	//Make sure the passed vector is a triangle
 	if (triangle.size() != 3) return false;
 
 	//Check if pixel is inside triangle
-	Vector2 edge = triangle[1].GetXY() - triangle[0].GetXY();
-	Vector2 pixelToSide = pixel - triangle[0].GetXY();
+	Vector2 edge = triangle[1].position.GetXY() - triangle[0].position.GetXY();
+	Vector2 pixelToSide = pixel - triangle[0].position.GetXY();
 	if (Vector2::Cross(edge, pixelToSide) < 0.f) return false;
 
-	edge = triangle[2].GetXY() - triangle[1].GetXY();
-	pixelToSide = pixel - triangle[1].GetXY();
+	edge = triangle[2].position.GetXY() - triangle[1].position.GetXY();
+	pixelToSide = pixel - triangle[1].position.GetXY();
 	if (Vector2::Cross(edge, pixelToSide) < 0.f) return false;
 
-	edge = triangle[0].GetXY() - triangle[2].GetXY();
-	pixelToSide = pixel - triangle[2].GetXY();
+	edge = triangle[0].position.GetXY() - triangle[2].position.GetXY();
+	pixelToSide = pixel - triangle[2].position.GetXY();
 	if (Vector2::Cross(edge, pixelToSide) < 0.f) return false;
 
 	return true;
