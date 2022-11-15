@@ -43,6 +43,9 @@ namespace dae
 			fov = tanf((fovAngle * TO_RADIANS) / 2.f);
 
 			origin = _origin;
+
+			CalculateViewMatrix();
+			CalculateProjectionMatrix();
 		}
 
 		void CalculateViewMatrix()
