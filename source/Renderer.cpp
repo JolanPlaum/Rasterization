@@ -23,8 +23,12 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pFrontBuffer = SDL_GetWindowSurface(pWindow);
 	m_pBackBuffer = SDL_CreateRGBSurface(0, m_Width, m_Height, 32, 0, 0, 0, 0);
 	m_pBackBufferPixels = (uint32_t*)m_pBackBuffer->pixels;
+	m_ClearColor = SDL_MapRGB(m_pBackBuffer->format,
+		static_cast<uint8_t>(100),
+		static_cast<uint8_t>(100),
+		static_cast<uint8_t>(100));
 
-	//m_pDepthBufferPixels = new float[m_Width * m_Height];
+	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
 	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
@@ -32,7 +36,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 Renderer::~Renderer()
 {
-	//delete[] m_pDepthBufferPixels;
+	delete[] m_pDepthBufferPixels;
 }
 
 void Renderer::Update(Timer* pTimer)
@@ -45,35 +49,80 @@ void Renderer::Render()
 	//@START
 	//Lock BackBuffer
 	SDL_LockSurface(m_pBackBuffer);
+	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
+	SDL_FillRect(m_pBackBuffer, NULL, m_ClearColor);
 
 	//Define Triangle - Vertices in WORLD space
 	std::vector<Vertex> vertices_world
 	{
+		//Triangle 0
+		{{ 0.f, 2.f, 0.f }, { 1, 0, 0 }},
+		{{ 1.5f, -1.f, 0.f }, { 1, 0, 0 }},
+		{{ -1.5f, -1.f, 0.f }, { 1, 0, 0 }},
+
+		//Triangle 1
 		{{ 0.f, 4.f, 2.f }, { 1, 0, 0 }},
 		{{ 3.f, -2.f, 2.f }, { 0, 1, 0 }},
 		{{ -3.f, -2.f, 2.f }, { 0, 0, 1 }}
 	};
 
-	//Define Triangle - Vertices in WORLD space
 	std::vector<Vertex> vertices_screen;
 	VertexTransformationFunction(vertices_world, vertices_screen);
 
 	//RENDER LOGIC
-	for (int px{}; px < m_Width; ++px)
+	size_t nrTriangles{ vertices_screen.size() / 3 };
+	for (int index{}; index < nrTriangles; ++index)
 	{
-		for (int py{}; py < m_Height; ++py)
+		Vertex v0{ vertices_screen[3 * index] };
+		Vertex v1{ vertices_screen[3 * index + 1] };
+		Vertex v2{ vertices_screen[3 * index + 2] };
+
+		for (int px{}; px < m_Width; ++px)
 		{
-			ColorRGB finalColor{ colors::Black };
+			for (int py{}; py < m_Height; ++py)
+			{
+				float w0, w1, w2;
+				Vector2 pixel{ (float)px, (float)py };
 
-			TrianglePixelHitTest(vertices_screen, { (float)px, (float)py }, finalColor);
+				//Check if pixel is inside triangle
+				Vector2 edge = v1.position.GetXY() - v0.position.GetXY();
+				Vector2 pixelToSide = pixel - v0.position.GetXY();
+				if ((w2 = Vector2::Cross(edge, pixelToSide)) < 0.f) continue;
 
-			//Update Color in Buffer
-			finalColor.MaxToOne();
+				edge = v2.position.GetXY() - v1.position.GetXY();
+				pixelToSide = pixel - v1.position.GetXY();
+				if ((w0 = Vector2::Cross(edge, pixelToSide)) < 0.f) continue;
 
-			m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-				static_cast<uint8_t>(finalColor.r * 255),
-				static_cast<uint8_t>(finalColor.g * 255),
-				static_cast<uint8_t>(finalColor.b * 255));
+				edge = v0.position.GetXY() - v2.position.GetXY();
+				pixelToSide = pixel - v2.position.GetXY();
+				if ((w1 = Vector2::Cross(edge, pixelToSide)) < 0.f) continue;
+
+				//float total = w0 + w1 + w2;
+				//w0 /= total;
+				//w1 /= total;
+				//w2 /= total;
+
+				float depth = v0.position.z * w0 + v1.position.z * w1 + v2.position.z * w2;
+				//depth /= total;
+				//TrianglePixelHitTest(triangle, { (float)px, (float)py }, finalColor, depth);
+
+				//Depth Test
+				if (depth < m_pDepthBufferPixels[px + (py * m_Width)])
+				{
+					//Depth Write
+					m_pDepthBufferPixels[px + (py * m_Width)] = depth;
+
+					//Update Color in Buffer
+					ColorRGB finalColor{ v0.color * w0 + v1.color * w1 + v2.color * w2 };
+					finalColor /= w0 + w1 + w2;
+					finalColor.MaxToOne();
+
+					m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+						static_cast<uint8_t>(finalColor.r * 255),
+						static_cast<uint8_t>(finalColor.g * 255),
+						static_cast<uint8_t>(finalColor.b * 255));
+				}
+			}
 		}
 	}
 
@@ -102,7 +151,7 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 	}
 }
 
-bool dae::Renderer::TrianglePixelHitTest(const std::vector<Vertex>& triangle, const Vector2& pixel, ColorRGB& color)
+bool dae::Renderer::TrianglePixelHitTest(const std::vector<Vertex>& triangle, const Vector2& pixel, ColorRGB& color, float& depth)
 {
 	//Make sure the passed vector is a triangle
 	if (triangle.size() != 3) return false;
@@ -128,6 +177,7 @@ bool dae::Renderer::TrianglePixelHitTest(const std::vector<Vertex>& triangle, co
 	w2 /= total;
 
 	color = triangle[0].color * w0 + triangle[1].color * w1 + triangle[2].color * w2;
+	depth = triangle[0].position.z * w0 + triangle[1].position.z * w1 + triangle[2].position.z * w2;
 
 	return true;
 }

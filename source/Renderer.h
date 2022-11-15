@@ -39,8 +39,9 @@ namespace dae
 		SDL_Surface* m_pFrontBuffer{ nullptr };
 		SDL_Surface* m_pBackBuffer{ nullptr };
 		uint32_t* m_pBackBufferPixels{};
+		Uint32 m_ClearColor{};
 
-		//float* m_pDepthBufferPixels{};
+		float* m_pDepthBufferPixels{};
 
 		Camera m_Camera{};
 
@@ -51,6 +52,6 @@ namespace dae
 		//Function that transforms the vertices from the mesh from World space to Screen space
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const; //W1 Version
 
-		bool TrianglePixelHitTest(const std::vector<Vertex>& triangle, const Vector2& pixel, ColorRGB& color);
+		bool TrianglePixelHitTest(const std::vector<Vertex>& triangle, const Vector2& pixel, ColorRGB& color, float& depth);
 	};
 }
