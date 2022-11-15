@@ -44,16 +44,29 @@ void Renderer::Render()
 	//Lock BackBuffer
 	SDL_LockSurface(m_pBackBuffer);
 
+	//Define Triangle - Vertices in NDC space
+	std::vector<Vector3> vertices_ndc
+	{
+		{ 0.f, 0.5f, 1.f},
+		{ 0.5f, -0.5f, 1.f},
+		{ -0.5f, -0.5f, 1.f}
+	};
+
+	for (Vector3& vertex : vertices_ndc)
+	{
+		vertex.x = ((1.f + vertex.x) / 2.f) * m_Width;
+		vertex.y = ((1.f - vertex.y) / 2.f) * m_Height;
+	}
+
 	//RENDER LOGIC
 	for (int px{}; px < m_Width; ++px)
 	{
 		for (int py{}; py < m_Height; ++py)
 		{
-			float gradient = px / static_cast<float>(m_Width);
-			gradient += py / static_cast<float>(m_Width);
-			gradient /= 2.0f;
+			ColorRGB finalColor{ colors::Black };
 
-			ColorRGB finalColor{ gradient, gradient, gradient };
+			if (TrianglePixelHitTest(vertices_ndc, { (float)px, (float)py }))
+				finalColor = colors::White;
 
 			//Update Color in Buffer
 			finalColor.MaxToOne();
@@ -75,6 +88,27 @@ void Renderer::Render()
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
 {
 	//Todo > W1 Projection Stage
+}
+
+bool dae::Renderer::TrianglePixelHitTest(const std::vector<Vector3>& triangle, const Vector2& pixel)
+{
+	//Make sure the passed vector is a triangle
+	if (triangle.size() != 3) return false;
+
+	//Check if pixel is inside triangle
+	Vector2 edge = triangle[1].GetXY() - triangle[0].GetXY();
+	Vector2 pixelToSide = pixel - triangle[0].GetXY();
+	if (Vector2::Cross(edge, pixelToSide) < 0.f) return false;
+
+	edge = triangle[2].GetXY() - triangle[1].GetXY();
+	pixelToSide = pixel - triangle[1].GetXY();
+	if (Vector2::Cross(edge, pixelToSide) < 0.f) return false;
+
+	edge = triangle[0].GetXY() - triangle[2].GetXY();
+	pixelToSide = pixel - triangle[2].GetXY();
+	if (Vector2::Cross(edge, pixelToSide) < 0.f) return false;
+
+	return true;
 }
 
 bool Renderer::SaveBufferToImage() const
