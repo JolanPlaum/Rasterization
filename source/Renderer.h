@@ -49,10 +49,14 @@ namespace dae
 		int m_Height{};
 		float m_AspectRatio{};
 
-		//Renders a single triangle 
+		//Render helper functions
+		void RenderMeshes(const std::vector<Mesh>& meshes);
+
+		//Renders a single triangle
 		void RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2);
 
 		//Function that transforms the vertices from the mesh from World space to Screen space
-		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const; //W1 Version
+		void VertexTransformationFunction(std::vector<Mesh>& meshes) const;
+		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 	};
 }

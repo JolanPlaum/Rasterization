@@ -52,39 +52,90 @@ void Renderer::Render()
 	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
 	SDL_FillRect(m_pBackBuffer, NULL, m_ClearColor);
 
-	//Define Triangle - Vertices in WORLD space
-	std::vector<Vertex> vertices_world
+	//Define Mesh
+	std::vector<Mesh> meshes_world
 	{
-		//Triangle 0
-		{{ 0.f, 2.f, 0.f }, { 1, 0, 0 }},
-		{{ 1.5f, -1.f, 0.f }, { 1, 0, 0 }},
-		{{ -1.5f, -1.f, 0.f }, { 1, 0, 0 }},
-
-		//Triangle 1
-		{{ 0.f, 4.f, 2.f }, { 1, 0, 0 }},
-		{{ 3.f, -2.f, 2.f }, { 0, 1, 0 }},
-		{{ -3.f, -2.f, 2.f }, { 0, 0, 1 }}
+		{
+			std::vector<Vertex>{
+				{ {	-3,	3,	-2 }, colors::White },
+				{ {	0,	3,	-2 }, colors::White },
+				{ { 3,	3,	-2 }, colors::White },
+				{ {	-3,	0,	-2 }, colors::White },
+				{ { 0,	0,	-2 }, colors::White },
+				{ { 3,	0,	-2 }, colors::White },
+				{ {	-3,	-3,	-2 }, colors::White },
+				{ { 0,	-3,	-2 }, colors::White },
+				{ { 3,	-3,	-2 }, colors::White }
+			},
+			std::vector<uint32_t>{
+				/*
+				3, 0, 1,	1, 4, 3,	4, 1, 2,
+				2, 5, 4,	6, 3, 4,	4, 7, 6,
+				7, 4, 5,	5, 8, 7
+				*/
+				3, 0, 4, 1, 5, 2,
+				2, 6,
+				6, 3, 7, 4, 8, 5
+			},
+			PrimitiveTopology::TriangleStrip
+		}
 	};
 
-	std::vector<Vertex> vertices_screen;
-	VertexTransformationFunction(vertices_world, vertices_screen);
+	VertexTransformationFunction(meshes_world);
 
 	//RENDER LOGIC
-	size_t nrTriangles{ vertices_screen.size() / 3 };
-	for (int index{}; index < nrTriangles; ++index)
-	{
-		Vertex v0{ vertices_screen[3 * index] };
-		Vertex v1{ vertices_screen[3 * index + 1] };
-		Vertex v2{ vertices_screen[3 * index + 2] };
-
-		RenderTriangle(v0, v1, v2);
-	}
+	RenderMeshes(meshes_world);
 
 	//@END
 	//Update SDL Surface
 	SDL_UnlockSurface(m_pBackBuffer);
 	SDL_BlitSurface(m_pBackBuffer, 0, m_pFrontBuffer, 0);
 	SDL_UpdateWindowSurface(m_pWindow);
+}
+
+void Renderer::RenderMeshes(const std::vector<Mesh>& meshes)
+{
+	for (const Mesh& m : meshes)
+	{
+		switch (m.primitiveTopology)
+		{
+		case PrimitiveTopology::TriangeList:
+			for (int i{}; i < m.indices.size() - 2; i += 3)
+			{
+				RenderTriangle(
+					m.vertices_out[m.indices[i]],
+					m.vertices_out[m.indices[i + 1]],
+					m.vertices_out[m.indices[i + 2]]
+				);
+			}
+			break;
+
+		case PrimitiveTopology::TriangleStrip:
+			for (int i{}; i < m.indices.size() - 2; ++i)
+			{
+				if (i & 1)
+				{
+					RenderTriangle(
+						m.vertices_out[m.indices[i]],
+						m.vertices_out[m.indices[i + 2]],
+						m.vertices_out[m.indices[i + 1]]
+					);
+				}
+				else
+				{
+					RenderTriangle(
+						m.vertices_out[m.indices[i]],
+						m.vertices_out[m.indices[i + 1]],
+						m.vertices_out[m.indices[i + 2]]
+					);
+				}
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
 }
 
 void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2)
@@ -103,9 +154,9 @@ void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& 
 	if (right >= m_Width) right = m_Width - 1;
 	if (bottom >= m_Height) bottom = m_Height - 1;
 
-	for (int px{left}; px < right; ++px)
+	for (int px{ left }; px < right; ++px)
 	{
-		for (int py{top}; py < bottom; ++py)
+		for (int py{ top }; py < bottom; ++py)
 		{
 			float w0, w1, w2;
 			Vector2 pixel{ (float)px, (float)py };
@@ -145,6 +196,14 @@ void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& 
 					static_cast<uint8_t>(finalColor.b * 255));
 			}
 		}
+	}
+}
+
+void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
+{
+	for (int i{}; i < meshes.size(); ++i)
+	{
+		VertexTransformationFunction(meshes[i].vertices, meshes[i].vertices_out);
 	}
 }
 
