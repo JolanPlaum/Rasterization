@@ -32,6 +32,9 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 	//Initialize Camera
 	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
+
+	//Initialize Texture
+	m_pTexture = Texture::LoadFromFile("Resources/uv_grid_2.png");
 }
 
 Renderer::~Renderer()
@@ -57,15 +60,15 @@ void Renderer::Render()
 	{
 		{
 			std::vector<Vertex>{
-				{ {	-3,	3,	-2 }, colors::White },
-				{ {	0,	3,	-2 }, colors::White },
-				{ { 3,	3,	-2 }, colors::White },
-				{ {	-3,	0,	-2 }, colors::White },
-				{ { 0,	0,	-2 }, colors::White },
-				{ { 3,	0,	-2 }, colors::White },
-				{ {	-3,	-3,	-2 }, colors::White },
-				{ { 0,	-3,	-2 }, colors::White },
-				{ { 3,	-3,	-2 }, colors::White }
+				{ {	-3,	3,	-2 }, colors::White, { 0.f,	0.f } },
+				{ {	0,	3,	-2 }, colors::White, { .5f,	0.f } },
+				{ { 3,	3,	-2 }, colors::White, { 1.f,	0.f } },
+				{ {	-3,	0,	-2 }, colors::White, { 0.f,	.5f } },
+				{ { 0,	0,	-2 }, colors::White, { .5f,	.5f } },
+				{ { 3,	0,	-2 }, colors::White, { 1.f,	.5f } },
+				{ {	-3,	-3,	-2 }, colors::White, { 0.f,	1.f } },
+				{ { 0,	-3,	-2 }, colors::White, { .5f,	1.f } },
+				{ { 3,	-3,	-2 }, colors::White, { 1.f,	1.f } }
 			},
 			std::vector<uint32_t>{
 				/*
@@ -184,7 +187,11 @@ void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& 
 				m_pDepthBufferPixels[px + (py * m_Width)] = depth;
 
 				//Update Color in Buffer
-				ColorRGB finalColor{ v0.color * w0 + v1.color * w1 + v2.color * w2 };
+				ColorRGB finalColor{};
+
+				if (m_pTexture != nullptr) finalColor = m_pTexture->Sample(w0 * v0.uv + w1 * v1.uv + w2 * v2.uv);
+				else finalColor = v0.color * w0 + v1.color * w1 + v2.color * w2;
+
 				finalColor.MaxToOne();
 
 				m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,

@@ -35,6 +35,7 @@ namespace dae
 
 	private:
 		SDL_Window* m_pWindow{};
+		Texture* m_pTexture{ nullptr };
 
 		SDL_Surface* m_pFrontBuffer{ nullptr };
 		SDL_Surface* m_pBackBuffer{ nullptr };

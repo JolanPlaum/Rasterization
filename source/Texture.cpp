@@ -1,6 +1,7 @@
 #include "Texture.h"
 #include "Vector2.h"
 #include <SDL_image.h>
+#include <cassert>
 
 namespace dae
 {
@@ -21,18 +22,25 @@ namespace dae
 
 	Texture* Texture::LoadFromFile(const std::string& path)
 	{
-		//TODO
 		//Load SDL_Surface using IMG_LOAD
-		//Create & Return a new Texture Object (using SDL_Surface)
+		SDL_Surface* pSurface = IMG_Load(path.c_str());
+		assert(pSurface && "Image failed to load!");
 
-		return nullptr;
+		//Create & Return a new Texture Object (using SDL_Surface)
+		return new Texture(pSurface);
 	}
 
 	ColorRGB Texture::Sample(const Vector2& uv) const
 	{
-		//TODO
-		//Sample the correct texel for the given uv
+		int width = m_pSurface->w;
+		int height = m_pSurface->h;
+		
+		int px = int(uv.x * width);
+		int py = int(uv.y * height);
 
-		return {};
+		Uint8 r, g, b;
+		SDL_GetRGB(m_pSurfacePixels[px + (py * width)], m_pSurface->format, &r, &g, &b);
+
+		return { r / 255.f, g / 255.f, b / 255.f };
 	}
 }
