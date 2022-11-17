@@ -144,6 +144,9 @@ void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& 
 	Vector2 edge1 = v0.position.GetXY() - v2.position.GetXY();
 	Vector2 edge2 = v1.position.GetXY() - v0.position.GetXY();
 
+	float area{ Vector2::Cross(edge0, edge1) };
+	if (area < 1.f) return;
+
 	int left{ (int)std::min(v0.position.x, std::min(v1.position.x, v2.position.x)) };
 	int top{  (int)std::min(v0.position.y, std::min(v1.position.y, v2.position.y)) };
 	int right{  (int)ceilf(std::max(v0.position.x, std::max(v1.position.x, v2.position.x))) };
@@ -163,19 +166,13 @@ void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& 
 
 			//Check if pixel is inside triangle
 			Vector2 pixelToSide = pixel - v0.position.GetXY();
-			if ((w2 = Vector2::Cross(edge2, pixelToSide)) < 0.f) continue;
+			if ((w2 = Vector2::Cross(edge2, pixelToSide) / area) < 0.f) continue;
 
 			pixelToSide = pixel - v1.position.GetXY();
-			if ((w0 = Vector2::Cross(edge0, pixelToSide)) < 0.f) continue;
+			if ((w0 = Vector2::Cross(edge0, pixelToSide) / area) < 0.f) continue;
 
 			pixelToSide = pixel - v2.position.GetXY();
-			if ((w1 = Vector2::Cross(edge1, pixelToSide)) < 0.f) continue;
-
-			//Turn weights into ratios
-			float total = w0 + w1 + w2;
-			w0 /= total;
-			w1 /= total;
-			w2 /= total;
+			if ((w1 = Vector2::Cross(edge1, pixelToSide) / area) < 0.f) continue;
 
 			//Calculate depth
 			float depth = v0.position.z * w0 + v1.position.z * w1 + v2.position.z * w2;
