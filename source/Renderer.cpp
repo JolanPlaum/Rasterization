@@ -177,8 +177,13 @@ void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& 
 			pixelToSide = pixel - v2.position.GetXY();
 			if ((w1 = Vector2::Cross(edge1, pixelToSide) / area) < 0.f) continue;
 
+			//Depth correction
+			w0 /= v0.position.z;
+			w1 /= v1.position.z;
+			w2 /= v2.position.z;
+
 			//Calculate depth
-			float depth = v0.position.z * w0 + v1.position.z * w1 + v2.position.z * w2;
+			float depth = 1.f / (w0 + w1 + w2);
 
 			//Depth Test
 			if (depth < m_pDepthBufferPixels[px + (py * m_Width)])
@@ -189,8 +194,8 @@ void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& 
 				//Update Color in Buffer
 				ColorRGB finalColor{};
 
-				if (m_pTexture != nullptr) finalColor = m_pTexture->Sample(w0 * v0.uv + w1 * v1.uv + w2 * v2.uv);
-				else finalColor = v0.color * w0 + v1.color * w1 + v2.color * w2;
+				if (m_pTexture != nullptr) finalColor = m_pTexture->Sample((w0 * v0.uv + w1 * v1.uv + w2 * v2.uv) * depth);
+				else finalColor = (w0 * v0.color + w1 * v1.color + w2 * v2.color) * depth;
 
 				finalColor.MaxToOne();
 
