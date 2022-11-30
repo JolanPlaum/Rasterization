@@ -39,6 +39,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 Renderer::~Renderer()
 {
+	delete m_pTexture;
 	delete[] m_pDepthBufferPixels;
 }
 
