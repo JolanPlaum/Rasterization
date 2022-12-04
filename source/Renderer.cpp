@@ -31,10 +31,11 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
-	m_Camera.Initialize(m_Width / (float)m_Height, 60.f, { .0f,.0f,-10.f });
+	m_Camera.Initialize(m_Width / (float)m_Height, 60.f, { .0f,5.f,-30.f });
 
 	//Initialize Texture
-	m_pTexture = Texture::LoadFromFile("Resources/uv_grid_2.png");
+	m_pTexture = Texture::LoadFromFile("Resources/tuktuk.png");
+	Utils::ParseOBJ("Resources/tuktuk.obj", m_Mesh.vertices, m_Mesh.indices);
 }
 
 Renderer::~Renderer()
@@ -57,38 +58,38 @@ void Renderer::Render()
 	SDL_FillRect(m_pBackBuffer, NULL, m_ClearColor);
 
 	//Define Mesh
-	std::vector<Mesh> meshes_world
-	{
-		{
-			std::vector<Vertex>{
-				{ {	-3,	3,	-2 }, colors::White, { 0.f,	0.f } },
-				{ {	0,	3,	-2 }, colors::White, { .5f,	0.f } },
-				{ { 3,	3,	-2 }, colors::White, { 1.f,	0.f } },
-				{ {	-3,	0,	-2 }, colors::White, { 0.f,	.5f } },
-				{ { 0,	0,	-2 }, colors::White, { .5f,	.5f } },
-				{ { 3,	0,	-2 }, colors::White, { 1.f,	.5f } },
-				{ {	-3,	-3,	-2 }, colors::White, { 0.f,	1.f } },
-				{ { 0,	-3,	-2 }, colors::White, { .5f,	1.f } },
-				{ { 3,	-3,	-2 }, colors::White, { 1.f,	1.f } }
-			},
-			std::vector<uint32_t>{
-				/*
-				3, 0, 1,	1, 4, 3,	4, 1, 2,
-				2, 5, 4,	6, 3, 4,	4, 7, 6,
-				7, 4, 5,	5, 8, 7
-				*/
-				3, 0, 4, 1, 5, 2,
-				2, 6,
-				6, 3, 7, 4, 8, 5
-			},
-			PrimitiveTopology::TriangleStrip
-		}
-	};
+	//std::vector<Mesh> meshes_world
+	//{
+	//	{
+	//		std::vector<Vertex>{
+	//			{ {	-3,	3,	-2 }, colors::White, { 0.f,	0.f } },
+	//			{ {	0,	3,	-2 }, colors::White, { .5f,	0.f } },
+	//			{ { 3,	3,	-2 }, colors::White, { 1.f,	0.f } },
+	//			{ {	-3,	0,	-2 }, colors::White, { 0.f,	.5f } },
+	//			{ { 0,	0,	-2 }, colors::White, { .5f,	.5f } },
+	//			{ { 3,	0,	-2 }, colors::White, { 1.f,	.5f } },
+	//			{ {	-3,	-3,	-2 }, colors::White, { 0.f,	1.f } },
+	//			{ { 0,	-3,	-2 }, colors::White, { .5f,	1.f } },
+	//			{ { 3,	-3,	-2 }, colors::White, { 1.f,	1.f } }
+	//		},
+	//		std::vector<uint32_t>{
+	//			/*
+	//			3, 0, 1,	1, 4, 3,	4, 1, 2,
+	//			2, 5, 4,	6, 3, 4,	4, 7, 6,
+	//			7, 4, 5,	5, 8, 7
+	//			*/
+	//			3, 0, 4, 1, 5, 2,
+	//			2, 6,
+	//			6, 3, 7, 4, 8, 5
+	//		},
+	//		PrimitiveTopology::TriangleStrip
+	//	}
+	//};
 
-	VertexTransformationFunction(meshes_world);
+	VertexTransformationFunction({m_Mesh});
 
 	//RENDER LOGIC
-	RenderMeshes(meshes_world);
+	RenderMeshes({m_Mesh});
 
 	//@END
 	//Update SDL Surface
@@ -220,17 +221,23 @@ void Renderer::RenderTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const 
 	}
 }
 
+void Renderer::VertexTransformationFunction(Mesh& mesh) const
+{
+	VertexTransformationFunction(mesh.vertices, mesh.vertices_out, mesh.worldMatrix);
+}
+
 void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 {
 	for (int i{}; i < meshes.size(); ++i)
 	{
-		VertexTransformationFunction(meshes[i].vertices, meshes[i].vertices_out);
+		VertexTransformationFunction(meshes[i].vertices, meshes[i].vertices_out, meshes[i].worldMatrix);
 	}
 }
 
-void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out) const
+void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& worldMatrix) const
 {
-	Matrix viewProjectionMatrix{ m_Camera.viewMatrix * m_Camera.projectionMatrix };
+	Matrix worldViewProjectionMatrix{ worldMatrix * m_Camera.viewMatrix * m_Camera.projectionMatrix };
+	vertices_out.clear();
 	vertices_out.reserve(vertices_in.size());
 
 	for (int i{}; i < vertices_in.size(); ++i)
@@ -239,7 +246,7 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 		Vertex_Out v{};
 
 		//Position calculations
-		v.position = viewProjectionMatrix.TransformPoint({ vertices_in[i].position, 1.f });
+		v.position = worldViewProjectionMatrix.TransformPoint({ vertices_in[i].position, 1.f });
 
 		v.position.x /= v.position.w;
 		v.position.y /= v.position.w;
@@ -251,6 +258,8 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 		//Set other variables
 		v.color = vertices_in[i].color;
 		v.uv = vertices_in[i].uv;
+		v.normal = vertices_in[i].normal;
+		v.tangent = vertices_in[i].tangent;
 
 		//Add the new temporary variable to the list
 		vertices_out.push_back(v);

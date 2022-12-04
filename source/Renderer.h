@@ -12,9 +12,6 @@ struct SDL_Surface;
 namespace dae
 {
 	class Texture;
-	struct Mesh;
-	struct Vertex;
-	struct Vertex_Out;
 	class Timer;
 	class Scene;
 
@@ -37,6 +34,7 @@ namespace dae
 	private:
 		SDL_Window* m_pWindow{};
 		Texture* m_pTexture{ nullptr };
+		Mesh m_Mesh{};
 
 		SDL_Surface* m_pFrontBuffer{ nullptr };
 		SDL_Surface* m_pBackBuffer{ nullptr };
@@ -58,7 +56,8 @@ namespace dae
 		void RenderTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2);
 
 		//Function that transforms the vertices from the mesh from World space to Screen space
+		void VertexTransformationFunction(Mesh& mesh) const;
 		void VertexTransformationFunction(std::vector<Mesh>& meshes) const;
-		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out) const;
+		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& worldMatrix) const;
 	};
 }
