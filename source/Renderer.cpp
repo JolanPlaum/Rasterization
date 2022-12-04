@@ -142,14 +142,20 @@ void Renderer::RenderMeshes(const std::vector<Mesh>& meshes)
 	}
 }
 
-void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2)
+void Renderer::RenderTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2)
 {
+	//Frustum Culling
+	if (v0.position.x < 0 || v1.position.x < 0 || v2.position.x < 0 ||
+		v0.position.x > m_Width || v1.position.x > m_Width || v2.position.x > m_Width) return;
+	if (v0.position.y < 0 || v1.position.y < 0 || v2.position.y < 0 ||
+		v0.position.y > m_Height || v1.position.y > m_Height || v2.position.y > m_Height) return;
+
 	Vector2 edge0 = v2.position.GetXY() - v1.position.GetXY();
 	Vector2 edge1 = v0.position.GetXY() - v2.position.GetXY();
 	Vector2 edge2 = v1.position.GetXY() - v0.position.GetXY();
 
 	float area{ Vector2::Cross(edge0, edge1) };
-	if (area < 1.f) return;
+	if (area < 0.001f) return;
 
 	int left{ (int)std::min(v0.position.x, std::min(v1.position.x, v2.position.x)) };
 	int top{  (int)std::min(v0.position.y, std::min(v1.position.y, v2.position.y)) };
@@ -178,19 +184,24 @@ void Renderer::RenderTriangle(const Vertex& v0, const Vertex& v1, const Vertex& 
 			pixelToSide = pixel - v2.position.GetXY();
 			if ((w1 = Vector2::Cross(edge1, pixelToSide) / area) < 0.f) continue;
 
-			//Depth correction
-			w0 /= v0.position.z;
-			w1 /= v1.position.z;
-			w2 /= v2.position.z;
+			//Calculate depth buffer
+			float depthBuffer = 1.f / (w0 / v0.position.z + w1 / v1.position.z + w2 / v2.position.z);
 
-			//Calculate depth
-			float depth = 1.f / (w0 + w1 + w2);
+			if (depthBuffer < 0 || depthBuffer > 1) continue;
 
 			//Depth Test
-			if (depth < m_pDepthBufferPixels[px + (py * m_Width)])
+			if (depthBuffer < m_pDepthBufferPixels[px + (py * m_Width)])
 			{
 				//Depth Write
-				m_pDepthBufferPixels[px + (py * m_Width)] = depth;
+				m_pDepthBufferPixels[px + (py * m_Width)] = depthBuffer;
+
+				//Depth correction
+				w0 /= v0.position.w;
+				w1 /= v1.position.w;
+				w2 /= v2.position.w;
+
+				//Calculate depth
+				float depth = 1.f / (w0 + w1 + w2);
 
 				//Update Color in Buffer
 				ColorRGB finalColor{};
@@ -217,20 +228,32 @@ void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes) const
 	}
 }
 
-void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
+void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out) const
 {
+	Matrix viewProjectionMatrix{ m_Camera.viewMatrix * m_Camera.projectionMatrix };
 	vertices_out.reserve(vertices_in.size());
 
 	for (int i{}; i < vertices_in.size(); ++i)
 	{
-		vertices_out.push_back({ vertices_in[i] });
-		vertices_out[i].position = m_Camera.viewMatrix.TransformPoint(vertices_in[i].position);
+		//Create temporary variable
+		Vertex_Out v{};
 
-		vertices_out[i].position.x = vertices_out[i].position.x / (vertices_out[i].position.z * m_AspectRatio * m_Camera.fov);
-		vertices_out[i].position.y = vertices_out[i].position.y / (vertices_out[i].position.z * m_Camera.fov);
+		//Position calculations
+		v.position = viewProjectionMatrix.TransformPoint({ vertices_in[i].position, 1.f });
 
-		vertices_out[i].position.x = ((1.f + vertices_out[i].position.x) / 2.f) * m_Width;
-		vertices_out[i].position.y = ((1.f - vertices_out[i].position.y) / 2.f) * m_Height;
+		v.position.x /= v.position.w;
+		v.position.y /= v.position.w;
+		v.position.z /= v.position.w;
+
+		v.position.x = ((1.f + v.position.x) / 2.f) * m_Width;
+		v.position.y = ((1.f - v.position.y) / 2.f) * m_Height;
+
+		//Set other variables
+		v.color = vertices_in[i].color;
+		v.uv = vertices_in[i].uv;
+
+		//Add the new temporary variable to the list
+		vertices_out.push_back(v);
 	}
 }
 
