@@ -12,16 +12,19 @@ namespace dae
 	{
 		Camera() = default;
 
-		Camera(const Vector3& _origin, float _fovAngle):
+		Camera(const Vector3& _origin, float _fovAngle, float _aspectRatio):
 			origin{_origin},
-			fovAngle{_fovAngle}
+			fovAngle{_fovAngle},
+			fov{ tanf((_fovAngle * TO_RADIANS) / 2.f) },
+			aspectRatio{_aspectRatio}
 		{
 		}
 
 
 		Vector3 origin{};
-		float fovAngle{90.f};
+		float fovAngle{ 90.f };
 		float fov{ tanf((fovAngle * TO_RADIANS) / 2.f) };
+		float aspectRatio{ 1.f };
 
 		Vector3 forward{Vector3::UnitZ};
 		Vector3 up{Vector3::UnitY};
@@ -32,19 +35,43 @@ namespace dae
 
 		Matrix invViewMatrix{};
 		Matrix viewMatrix{};
+		Matrix projectionMatrix{};
 
 		const float movementSpeed{ 10.f };
 		const float rotationSpeed{ 1.f };
 
+		const float near{ 0.1f };
+		const float far{ 100.f };
 
-		void Initialize(float _fovAngle = 90.f, Vector3 _origin = {0.f,0.f,0.f})
+
+		void Initialize(float _aspectRatio = 1.f, float _fovAngle = 90.f, Vector3 _origin = {0.f,0.f,0.f})
 		{
+			aspectRatio = _aspectRatio;
+
 			fovAngle = _fovAngle;
-			fov = tanf((fovAngle * TO_RADIANS) / 2.f);
+			fov = tanf((_fovAngle * TO_RADIANS) / 2.f);
 
 			origin = _origin;
 
+			//Initialize matrixes
 			CalculateViewMatrix();
+			CalculateProjectionMatrix();
+		}
+
+		void SetFovAngle(float _fovAngle)
+		{
+			fovAngle = _fovAngle;
+			fov = tanf((_fovAngle * TO_RADIANS) / 2.f);
+
+			//Re-calculate when fov/aspectRatio changes
+			CalculateProjectionMatrix();
+		}
+
+		void SetAspectRatio(float _aspectRatio)
+		{
+			aspectRatio = _aspectRatio;
+
+			//Re-calculate when fov/aspectRatio changes
 			CalculateProjectionMatrix();
 		}
 
@@ -66,10 +93,7 @@ namespace dae
 
 		void CalculateProjectionMatrix()
 		{
-			//TODO W2
-
-			//ProjectionMatrix => Matrix::CreatePerspectiveFovLH(...) [not implemented yet]
-			//DirectX Implementation => https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dxmatrixperspectivefovlh
+			projectionMatrix = Matrix::CreatePerspectiveFovLH(fov, aspectRatio, near, far);
 		}
 
 		void Update(Timer* pTimer)
@@ -114,7 +138,6 @@ namespace dae
 
 				//Update Matrices
 				CalculateViewMatrix();
-				CalculateProjectionMatrix(); //Try to optimize this - should only be called once or when fov/aspectRatio changes
 			}
 		}
 	};

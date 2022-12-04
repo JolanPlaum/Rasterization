@@ -31,7 +31,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
-	m_Camera.Initialize(60.f, { .0f,.0f,-10.f });
+	m_Camera.Initialize(m_Width / (float)m_Height, 60.f, { .0f,.0f,-10.f });
 
 	//Initialize Texture
 	m_pTexture = Texture::LoadFromFile("Resources/uv_grid_2.png");
