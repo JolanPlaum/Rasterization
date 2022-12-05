@@ -36,6 +36,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	//Initialize Texture
 	m_pTexture = Texture::LoadFromFile("Resources/tuktuk.png");
 	Utils::ParseOBJ("Resources/tuktuk.obj", m_Mesh.vertices, m_Mesh.indices);
+	m_Mesh.primitiveTopology = PrimitiveTopology::TriangeList;
 }
 
 Renderer::~Renderer()
