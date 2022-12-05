@@ -144,12 +144,28 @@ void Renderer::RenderMeshes(const std::vector<Mesh>& meshes)
 }
 
 void Renderer::RenderTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2)
+bool Renderer::FrustumCulling(const Vector4& v)
 {
 	//Frustum Culling
 	if (v0.position.x < 0 || v1.position.x < 0 || v2.position.x < 0 ||
 		v0.position.x > m_Width || v1.position.x > m_Width || v2.position.x > m_Width) return;
 	if (v0.position.y < 0 || v1.position.y < 0 || v2.position.y < 0 ||
 		v0.position.y > m_Height || v1.position.y > m_Height || v2.position.y > m_Height) return;
+	if (v.x < -1.f || v.x > 1.f) return true;
+	if (v.y < -1.f || v.y > 1.f) return true;
+	if (v.z < 0.f || v.z > 1.f) return true;
+
+	return false;
+}
+
+Vertex_Out Renderer::NDCToRaster(const Vertex_Out& v)
+{
+	Vertex_Out temp{ v };
+	temp.position.x = ((1.f + v.position.x) / 2.f) * m_Width;
+	temp.position.y = ((1.f - v.position.y) / 2.f) * m_Height;
+	return temp;
+}
+
 
 	Vector2 edge0 = v2.position.GetXY() - v1.position.GetXY();
 	Vector2 edge1 = v0.position.GetXY() - v2.position.GetXY();

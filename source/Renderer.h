@@ -51,6 +51,8 @@ namespace dae
 
 		//Render helper functions
 		void RenderMeshes(const std::vector<Mesh>& meshes);
+		bool FrustumCulling(const Vector4& v);
+		Vertex_Out NDCToRaster(const Vertex_Out& v);
 
 		//Renders a single triangle
 		void RenderTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2);
