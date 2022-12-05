@@ -47,6 +47,10 @@ Renderer::~Renderer()
 void Renderer::Update(Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
+
+	m_Rotation += (PI / 2.f) * pTimer->GetElapsed();
+	if (m_Rotation > PI * 2.f)
+		m_Rotation -= PI * 2.f;
 }
 
 void Renderer::Render()
@@ -85,6 +89,9 @@ void Renderer::Render()
 	//		PrimitiveTopology::TriangleStrip
 	//	}
 	//};
+
+	//Rotate mesh
+	m_Mesh.worldMatrix = Matrix::CreateRotationY(m_Rotation);
 
 	VertexTransformationFunction({m_Mesh});
 

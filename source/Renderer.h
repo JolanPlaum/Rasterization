@@ -35,6 +35,7 @@ namespace dae
 		SDL_Window* m_pWindow{};
 		Texture* m_pTexture{ nullptr };
 		Mesh m_Mesh{};
+		float m_Rotation{};
 
 		SDL_Surface* m_pFrontBuffer{ nullptr };
 		SDL_Surface* m_pBackBuffer{ nullptr };
