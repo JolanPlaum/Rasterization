@@ -143,14 +143,8 @@ void Renderer::RenderMeshes(const std::vector<Mesh>& meshes)
 	}
 }
 
-void Renderer::RenderTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2)
 bool Renderer::FrustumCulling(const Vector4& v)
 {
-	//Frustum Culling
-	if (v0.position.x < 0 || v1.position.x < 0 || v2.position.x < 0 ||
-		v0.position.x > m_Width || v1.position.x > m_Width || v2.position.x > m_Width) return;
-	if (v0.position.y < 0 || v1.position.y < 0 || v2.position.y < 0 ||
-		v0.position.y > m_Height || v1.position.y > m_Height || v2.position.y > m_Height) return;
 	if (v.x < -1.f || v.x > 1.f) return true;
 	if (v.y < -1.f || v.y > 1.f) return true;
 	if (v.z < 0.f || v.z > 1.f) return true;
@@ -166,6 +160,13 @@ Vertex_Out Renderer::NDCToRaster(const Vertex_Out& v)
 	return temp;
 }
 
+void Renderer::RenderTriangle(const Vertex_Out& _v0, const Vertex_Out& _v1, const Vertex_Out& _v2)
+{
+	if (FrustumCulling(_v0.position) || FrustumCulling(_v1.position) || FrustumCulling(_v2.position)) return;
+
+	Vertex_Out v0{ NDCToRaster(_v0) };
+	Vertex_Out v1{ NDCToRaster(_v1) };
+	Vertex_Out v2{ NDCToRaster(_v2) };
 
 	Vector2 edge0 = v2.position.GetXY() - v1.position.GetXY();
 	Vector2 edge1 = v0.position.GetXY() - v2.position.GetXY();
@@ -268,9 +269,6 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 		v.position.y /= v.position.w;
 		v.position.z /= v.position.w;
 
-		v.position.x = ((1.f + v.position.x) / 2.f) * m_Width;
-		v.position.y = ((1.f - v.position.y) / 2.f) * m_Height;
-
 		//Set other variables
 		v.color = vertices_in[i].color;
 		v.uv = vertices_in[i].uv;
@@ -278,7 +276,7 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 		v.tangent = vertices_in[i].tangent;
 
 		//Add the new temporary variable to the list
-		vertices_out.push_back(v);
+		vertices_out.emplace_back(v);
 	}
 }
 
