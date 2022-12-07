@@ -263,11 +263,11 @@ void Renderer::PixelShading(const Vertex_Out& v)
 	Vector3 lightDirection{ .577f, -.577f, .577f };
 	float lightIntensity{ 7.f };
 	float shininess{ 25.f };
-	ColorRGB finalColor{};
+	ColorRGB finalColor{ 0.025f, 0.025f, 0.025f };
 
 	//calculate view direction
-	const int px = v.position.x;
-	const int py = v.position.y;
+	const int px = (int)v.position.x;
+	const int py = (int)v.position.y;
 
 	float rx = px + 0.5f;
 	float ry = py + 0.5f;
@@ -299,7 +299,7 @@ void Renderer::PixelShading(const Vertex_Out& v)
 	//Update Color in Buffer
 	finalColor.MaxToOne();
 
-	m_pBackBufferPixels[(int)v.position.x + ((int)v.position.y * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+	m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
 		static_cast<uint8_t>(finalColor.r * 255),
 		static_cast<uint8_t>(finalColor.g * 255),
 		static_cast<uint8_t>(finalColor.b * 255));
