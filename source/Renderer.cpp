@@ -238,30 +238,52 @@ void Renderer::RenderTriangle(const Vertex_Out& _v0, const Vertex_Out& _v1, cons
 				//Depth Write
 				m_pDepthBufferPixels[px + (py * m_Width)] = depthBuffer;
 
-				//Depth correction
-				w0 /= v0.position.w;
-				w1 /= v1.position.w;
-				w2 /= v2.position.w;
+				ColorRGB finalColor{};
+				if (m_ShowFinalColor)
+				{
+					//Depth correction
+					w0 /= v0.position.w;
+					w1 /= v1.position.w;
+					w2 /= v2.position.w;
 
-				//Calculate depth
-				float depth = 1.f / (w0 + w1 + w2);
+					//Calculate depth
+					float depth = 1.f / (w0 + w1 + w2);
+
+					//Update Color in Buffer
+					Vertex_Out temp{};
+					temp.position.x = (float)px;
+					temp.position.y = (float)py;
+					temp.color = (w0 * v0.color + w1 * v1.color + w2 * v2.color) * depth;
+					temp.uv = (w0 * v0.uv + w1 * v1.uv + w2 * v2.uv) * depth;
+					temp.normal = ((w0 * v0.normal + w1 * v1.normal + w2 * v2.normal) * depth).Normalized();
+					temp.tangent = ((w0 * v0.tangent + w1 * v1.tangent + w2 * v2.tangent) * depth).Normalized();
+
+					finalColor = PixelShading(temp);
+				}
+				else
+				{
+					//Remap the depthbuffer to avoid having everything in white
+					Remap(depthBuffer, 0.985f, 1.f);
+
+					//Clamp the depthbuffer to prevent negative values
+					depthBuffer = Clamp(depthBuffer, 0.f, 1.f);
+
+					finalColor = { depthBuffer,depthBuffer,depthBuffer };
+				}
 
 				//Update Color in Buffer
-				Vertex_Out temp{};
-				temp.position.x = (float)px;
-				temp.position.y = (float)py;
-				temp.color = (w0 * v0.color + w1 * v1.color + w2 * v2.color) * depth;
-				temp.uv = (w0 * v0.uv + w1 * v1.uv + w2 * v2.uv) * depth;
-				temp.normal = ((w0 * v0.normal + w1 * v1.normal + w2 * v2.normal) * depth).Normalized();
-				temp.tangent = ((w0 * v0.tangent + w1 * v1.tangent + w2 * v2.tangent) * depth).Normalized();
+				finalColor.MaxToOne();
 
-				PixelShading(temp);
+				m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+					static_cast<uint8_t>(finalColor.r * 255),
+					static_cast<uint8_t>(finalColor.g * 255),
+					static_cast<uint8_t>(finalColor.b * 255));
 			}
 		}
 	}
 }
 
-void Renderer::PixelShading(const Vertex_Out& v)
+ColorRGB Renderer::PixelShading(const Vertex_Out& v)
 {
 	Vector3 lightDirection{ .577f, -.577f, .577f };
 	float lightIntensity{ 7.f };
@@ -323,15 +345,7 @@ void Renderer::PixelShading(const Vertex_Out& v)
 		}
 	}
 
-
-
-	//Update Color in Buffer
-	finalColor.MaxToOne();
-
-	m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-		static_cast<uint8_t>(finalColor.r * 255),
-		static_cast<uint8_t>(finalColor.g * 255),
-		static_cast<uint8_t>(finalColor.b * 255));
+	return finalColor;
 }
 
 void Renderer::VertexTransformationFunction(Mesh& mesh) const
