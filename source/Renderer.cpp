@@ -35,6 +35,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 	//Initialize Texture
 	m_pTexDiffuse =  Texture::LoadFromFile("Resources/vehicle_diffuse.png");
+	m_pTexNormal =	 Texture::LoadFromFile("Resources/vehicle_normal.png");
 	Utils::ParseOBJ("Resources/vehicle.obj", m_Mesh.vertices, m_Mesh.indices);
 	m_Mesh.primitiveTopology = PrimitiveTopology::TriangeList;
 }
@@ -42,6 +43,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 Renderer::~Renderer()
 {
 	delete m_pTexDiffuse;
+	delete m_pTexNormal;
 	delete[] m_pDepthBufferPixels;
 }
 
@@ -244,7 +246,7 @@ void Renderer::RenderTriangle(const Vertex_Out& _v0, const Vertex_Out& _v1, cons
 				temp.color = (w0 * v0.color + w1 * v1.color + w2 * v2.color) * depth;
 				temp.uv = (w0 * v0.uv + w1 * v1.uv + w2 * v2.uv) * depth;
 				temp.normal = ((w0 * v0.normal + w1 * v1.normal + w2 * v2.normal) * depth).Normalized();
-				//temp.normal = ((v0.normal + v1.normal + v2.normal) / 3.f).Normalized();
+				temp.tangent = ((w0 * v0.tangent + w1 * v1.tangent + w2 * v2.tangent) * depth).Normalized();
 
 				PixelShading(temp);
 			}
@@ -258,8 +260,17 @@ void Renderer::PixelShading(const Vertex_Out& v)
 	float lightIntensity{ 7.f };
 	ColorRGB finalColor{};
 
+	//Normal map
+	Vector3 binormal = Vector3::Cross(v.normal, v.tangent);
+	Matrix tangentSpaceAxis{ v.tangent, binormal, v.normal, Vector3::Zero };
+
+	ColorRGB sampledColor = m_pTexNormal->Sample(v.uv);
+	sampledColor = (2.f * sampledColor) - ColorRGB{ 1.f, 1.f, 1.f };
+
+	Vector3 sampledNormal = tangentSpaceAxis.TransformVector(sampledColor.r, sampledColor.g, sampledColor.b);
+
 	//Observed area (lambert cosine law)
-	float dotProduct = v.normal * -lightDirection;
+	float dotProduct = sampledNormal * -lightDirection;
 	if (dotProduct >= 0.f)
 	{
 		finalColor += Lambert(lightIntensity, m_pTexDiffuse->Sample(v.uv)) * dotProduct;
@@ -311,7 +322,7 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 		v.color = vertices_in[i].color;
 		v.uv = vertices_in[i].uv;
 		v.normal = worldMatrix.TransformVector(vertices_in[i].normal);
-		v.tangent = vertices_in[i].tangent;
+		v.tangent = worldMatrix.TransformVector(vertices_in[i].tangent);
 
 		//Add the new temporary variable to the list
 		vertices_out.emplace_back(v);

@@ -35,6 +35,7 @@ namespace dae
 	private:
 		SDL_Window* m_pWindow{};
 		Texture* m_pTexDiffuse{ nullptr };
+		Texture* m_pTexNormal{ nullptr };
 		Mesh m_Mesh{};
 		float m_Rotation{};
 
