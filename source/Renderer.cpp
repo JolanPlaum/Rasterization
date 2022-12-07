@@ -55,9 +55,12 @@ void Renderer::Update(Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
 
-	m_Rotation += pTimer->GetElapsed();
-	if (m_Rotation > PI * 2.f)
-		m_Rotation -= PI * 2.f;
+	if (m_IsRotating)
+	{
+		m_Rotation += pTimer->GetElapsed();
+		if (m_Rotation > PI * 2.f)
+			m_Rotation -= PI * 2.f;
+	}
 }
 
 void Renderer::Render()
@@ -265,33 +268,59 @@ void Renderer::PixelShading(const Vertex_Out& v)
 	float shininess{ 25.f };
 	ColorRGB finalColor{ 0.025f, 0.025f, 0.025f };
 
-	//calculate view direction
+	Vector3 normal{ v.normal };
+	Vector3 viewDirection{};
+
 	const int px = (int)v.position.x;
 	const int py = (int)v.position.y;
 
-	float rx = px + 0.5f;
-	float ry = py + 0.5f;
+	//calculate view direction
+	if (m_LightingMode == LightingMode::Specular || m_LightingMode == LightingMode::Combined)
+	{
+		float rx = px + 0.5f;
+		float ry = py + 0.5f;
 
-	float cx = (2 * (rx / float(m_Width)) - 1) * m_AspectRatio * m_Camera.fov;
-	float cy = (1 - (2 * (ry / float(m_Height)))) * m_Camera.fov;
+		float cx = (2 * (rx / float(m_Width)) - 1) * m_AspectRatio * m_Camera.fov;
+		float cy = (1 - (2 * (ry / float(m_Height)))) * m_Camera.fov;
 
-	Vector3 viewDirection = (cx * m_Camera.right + cy * m_Camera.up + m_Camera.forward).Normalized();
+		viewDirection = (cx * m_Camera.right + cy * m_Camera.up + m_Camera.forward).Normalized();
+	}
 
 	//Normal map
-	Vector3 binormal = Vector3::Cross(v.normal, v.tangent);
-	Matrix tangentSpaceAxis{ v.tangent, binormal, v.normal, Vector3::Zero };
+	if (m_IsNormalMap)
+	{
+		Vector3 binormal = Vector3::Cross(v.normal, v.tangent);
+		Matrix tangentSpaceAxis{ v.tangent, binormal, v.normal, Vector3::Zero };
 
-	ColorRGB sampledColor = m_pTexNormal->Sample(v.uv);
-	sampledColor = (2.f * sampledColor) - ColorRGB{ 1.f, 1.f, 1.f };
+		ColorRGB sampledColor = m_pTexNormal->Sample(v.uv);
+		sampledColor = (2.f * sampledColor) - ColorRGB{ 1.f, 1.f, 1.f };
 
-	Vector3 sampledNormal = tangentSpaceAxis.TransformVector(sampledColor.r, sampledColor.g, sampledColor.b);
+		normal = tangentSpaceAxis.TransformVector(sampledColor.r, sampledColor.g, sampledColor.b);
+	}
 
 	//Observed area (lambert cosine law)
-	float dotProduct = sampledNormal * -lightDirection;
+	float dotProduct = normal * -lightDirection;
 	if (dotProduct >= 0.f)
 	{
-		finalColor += Lambert(lightIntensity, m_pTexDiffuse->Sample(v.uv)) * dotProduct;
-		finalColor += Phong(m_pTexSpecular->Sample(v.uv), shininess * m_pTexGloss->Sample(v.uv).r, -lightDirection, viewDirection, sampledNormal) * dotProduct;
+		switch (m_LightingMode)
+		{
+		case LightingMode::ObservedArea:
+			finalColor += { dotProduct, dotProduct, dotProduct };
+			break;
+
+		case LightingMode::Diffuse:
+			finalColor += Lambert(lightIntensity, m_pTexDiffuse->Sample(v.uv)) * dotProduct;
+			break;
+
+		case LightingMode::Specular:
+			finalColor += Phong(m_pTexSpecular->Sample(v.uv), shininess * m_pTexGloss->Sample(v.uv).r, -lightDirection, viewDirection, normal) * dotProduct;
+			break;
+
+		case LightingMode::Combined:
+			finalColor += Lambert(lightIntensity, m_pTexDiffuse->Sample(v.uv)) * dotProduct;
+			finalColor += Phong(m_pTexSpecular->Sample(v.uv), shininess * m_pTexGloss->Sample(v.uv).r, -lightDirection, viewDirection, normal) * dotProduct;
+			break;
+		}
 	}
 
 
@@ -350,6 +379,21 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 void Renderer::ToggleFinalColor()
 {
 	m_ShowFinalColor = !m_ShowFinalColor;
+}
+
+void Renderer::ToggleRotation()
+{
+	m_IsRotating = !m_IsRotating;
+}
+
+void Renderer::ToggleNormalMap()
+{
+	m_IsNormalMap = !m_IsNormalMap;
+}
+
+void Renderer::CycleLightingMode()
+{
+	m_LightingMode = LightingMode(((int)m_LightingMode + 1) % (int)LightingMode::End);
 }
 
 bool Renderer::SaveBufferToImage() const

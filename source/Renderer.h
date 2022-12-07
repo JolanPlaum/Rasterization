@@ -30,6 +30,9 @@ namespace dae
 		void Render();
 
 		void ToggleFinalColor();
+		void ToggleRotation();
+		void ToggleNormalMap();
+		void CycleLightingMode();
 		bool SaveBufferToImage() const;
 
 	private:
@@ -54,6 +57,20 @@ namespace dae
 		int m_Width{};
 		int m_Height{};
 		float m_AspectRatio{};
+
+		enum class LightingMode
+		{
+			ObservedArea, //Lambert Cosine Law
+			Diffuse, //Including observed area
+			Specular, //Including observed area
+			Combined, //ObservedArea * (Diffuse + Specular)
+
+			End
+		};
+
+		LightingMode m_LightingMode{ LightingMode::Combined };
+		bool m_IsRotating{ true };
+		bool m_IsNormalMap{ true };
 
 		//Render helper functions
 		void RenderMeshes(const std::vector<Mesh>& meshes);
