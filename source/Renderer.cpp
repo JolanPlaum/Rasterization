@@ -31,11 +31,11 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	//Initialize Camera
-	m_Camera.Initialize(m_Width / (float)m_Height, 60.f, { .0f,5.f,-30.f });
+	m_Camera.Initialize(m_Width / (float)m_Height, 45.f, { 0.f,0.f,0.f });
 
 	//Initialize Texture
 	m_pTexture = Texture::LoadFromFile("Resources/tuktuk.png");
-	Utils::ParseOBJ("Resources/tuktuk.obj", m_Mesh.vertices, m_Mesh.indices);
+	Utils::ParseOBJ("Resources/vehicle.obj", m_Mesh.vertices, m_Mesh.indices);
 	m_Mesh.primitiveTopology = PrimitiveTopology::TriangeList;
 }
 
@@ -49,7 +49,7 @@ void Renderer::Update(Timer* pTimer)
 {
 	m_Camera.Update(pTimer);
 
-	m_Rotation += (PI / 2.f) * pTimer->GetElapsed();
+	m_Rotation += pTimer->GetElapsed();
 	if (m_Rotation > PI * 2.f)
 		m_Rotation -= PI * 2.f;
 }
@@ -92,7 +92,7 @@ void Renderer::Render()
 	//};
 
 	//Rotate mesh
-	m_Mesh.worldMatrix = Matrix::CreateRotationY(m_Rotation);
+	m_Mesh.worldMatrix = Matrix::CreateRotationY(m_Rotation) * Matrix::CreateTranslation(0.f, 0.f, 50.f);
 
 	VertexTransformationFunction({m_Mesh});
 
@@ -238,30 +238,15 @@ void Renderer::RenderTriangle(const Vertex_Out& _v0, const Vertex_Out& _v1, cons
 				float depth = 1.f / (w0 + w1 + w2);
 
 				//Update Color in Buffer
-				ColorRGB finalColor{};
+				Vertex_Out temp{};
+				temp.position.x = (float)px;
+				temp.position.y = (float)py;
+				temp.color = (w0 * v0.color + w1 * v1.color + w2 * v2.color) * depth;
+				temp.uv = (w0 * v0.uv + w1 * v1.uv + w2 * v2.uv) * depth;
+				temp.normal = ((w0 * v0.normal + w1 * v1.normal + w2 * v2.normal) * depth).Normalized();
+				//temp.normal = ((v0.normal + v1.normal + v2.normal) / 3.f).Normalized();
 
-				if (m_ShowFinalColor)
-				{
-					if (m_pTexture != nullptr) finalColor = m_pTexture->Sample((w0 * v0.uv + w1 * v1.uv + w2 * v2.uv) * depth);
-					else finalColor = (w0 * v0.color + w1 * v1.color + w2 * v2.color) * depth;
-				}
-				else
-				{
-					//Remap the depthbuffer to avoid having everything in white
-					Remap(depthBuffer, 0.985f, 1.f);
-
-					//Clamp the depthbuffer to prevent negative values
-					depthBuffer = Clamp(depthBuffer, 0.f, 1.f);
-
-					finalColor = { depthBuffer,depthBuffer,depthBuffer };
-				}
-
-				finalColor.MaxToOne();
-
-				m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
-					static_cast<uint8_t>(finalColor.r * 255),
-					static_cast<uint8_t>(finalColor.g * 255),
-					static_cast<uint8_t>(finalColor.b * 255));
+				PixelShading(temp);
 			}
 		}
 	}
@@ -324,7 +309,7 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 		//Set other variables
 		v.color = vertices_in[i].color;
 		v.uv = vertices_in[i].uv;
-		v.normal = vertices_in[i].normal;
+		v.normal = worldMatrix.TransformVector(vertices_in[i].normal);
 		v.tangent = vertices_in[i].tangent;
 
 		//Add the new temporary variable to the list
