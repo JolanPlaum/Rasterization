@@ -29,6 +29,7 @@ namespace dae
 		void Update(Timer* pTimer);
 		void Render();
 
+		void ToggleFinalColor();
 		bool SaveBufferToImage() const;
 
 	private:
@@ -41,6 +42,7 @@ namespace dae
 		SDL_Surface* m_pBackBuffer{ nullptr };
 		uint32_t* m_pBackBufferPixels{};
 		Uint32 m_ClearColor{};
+		bool m_ShowFinalColor{ true };
 
 		float* m_pDepthBufferPixels{};
 
@@ -54,6 +56,7 @@ namespace dae
 		void RenderMeshes(const std::vector<Mesh>& meshes);
 		bool FrustumCulling(const Vector4& v);
 		Vertex_Out NDCToRaster(const Vertex_Out& v);
+		bool Remap(float& value, float min, float max);
 
 		//Renders a single triangle
 		void RenderTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2);

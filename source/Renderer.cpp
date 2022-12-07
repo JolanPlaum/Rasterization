@@ -168,6 +168,14 @@ Vertex_Out Renderer::NDCToRaster(const Vertex_Out& v)
 	return temp;
 }
 
+bool Renderer::Remap(float& value, float min, float max)
+{
+	value = (value - min) / (max - min);
+
+	if (value < 0.f || value > 1.f) return false;
+	return true;
+}
+
 void Renderer::RenderTriangle(const Vertex_Out& _v0, const Vertex_Out& _v1, const Vertex_Out& _v2)
 {
 	if (FrustumCulling(_v0.position) || FrustumCulling(_v1.position) || FrustumCulling(_v2.position)) return;
@@ -232,8 +240,21 @@ void Renderer::RenderTriangle(const Vertex_Out& _v0, const Vertex_Out& _v1, cons
 				//Update Color in Buffer
 				ColorRGB finalColor{};
 
-				if (m_pTexture != nullptr) finalColor = m_pTexture->Sample((w0 * v0.uv + w1 * v1.uv + w2 * v2.uv) * depth);
-				else finalColor = (w0 * v0.color + w1 * v1.color + w2 * v2.color) * depth;
+				if (m_ShowFinalColor)
+				{
+					if (m_pTexture != nullptr) finalColor = m_pTexture->Sample((w0 * v0.uv + w1 * v1.uv + w2 * v2.uv) * depth);
+					else finalColor = (w0 * v0.color + w1 * v1.color + w2 * v2.color) * depth;
+				}
+				else
+				{
+					//Remap the depthbuffer to avoid having everything in white
+					Remap(depthBuffer, 0.985f, 1.f);
+
+					//Clamp the depthbuffer to prevent negative values
+					depthBuffer = Clamp(depthBuffer, 0.f, 1.f);
+
+					finalColor = { depthBuffer,depthBuffer,depthBuffer };
+				}
 
 				finalColor.MaxToOne();
 
@@ -286,6 +307,11 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 		//Add the new temporary variable to the list
 		vertices_out.emplace_back(v);
 	}
+}
+
+void Renderer::ToggleFinalColor()
+{
+	m_ShowFinalColor = !m_ShowFinalColor;
 }
 
 bool Renderer::SaveBufferToImage() const
