@@ -61,6 +61,9 @@ namespace dae
 		//Renders a single triangle
 		void RenderTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2);
 
+		//Shades a single pixel
+		void PixelShading(const Vertex_Out& v);
+
 		//Function that transforms the vertices from the mesh from World space to Screen space
 		void VertexTransformationFunction(Mesh& mesh) const;
 		void VertexTransformationFunction(std::vector<Mesh>& meshes) const;

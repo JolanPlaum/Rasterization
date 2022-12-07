@@ -267,6 +267,29 @@ void Renderer::RenderTriangle(const Vertex_Out& _v0, const Vertex_Out& _v1, cons
 	}
 }
 
+void Renderer::PixelShading(const Vertex_Out& v)
+{
+	Vector3 lightDirection = { .577f, -.577f, .577f };
+	ColorRGB finalColor{};
+
+	//Observed area (lambert cosine law)
+	float dotProduct = v.normal * -lightDirection;
+	if (dotProduct >= 0.f)
+	{
+		finalColor += { dotProduct, dotProduct, dotProduct };
+	}
+
+
+
+	//Update Color in Buffer
+	finalColor.MaxToOne();
+
+	m_pBackBufferPixels[(int)v.position.x + ((int)v.position.y * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+		static_cast<uint8_t>(finalColor.r * 255),
+		static_cast<uint8_t>(finalColor.g * 255),
+		static_cast<uint8_t>(finalColor.b * 255));
+}
+
 void Renderer::VertexTransformationFunction(Mesh& mesh) const
 {
 	VertexTransformationFunction(mesh.vertices, mesh.vertices_out, mesh.worldMatrix);
