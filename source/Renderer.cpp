@@ -34,14 +34,14 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_Camera.Initialize(m_Width / (float)m_Height, 45.f, { 0.f,0.f,0.f });
 
 	//Initialize Texture
-	m_pTexture = Texture::LoadFromFile("Resources/tuktuk.png");
+	m_pTexDiffuse =  Texture::LoadFromFile("Resources/vehicle_diffuse.png");
 	Utils::ParseOBJ("Resources/vehicle.obj", m_Mesh.vertices, m_Mesh.indices);
 	m_Mesh.primitiveTopology = PrimitiveTopology::TriangeList;
 }
 
 Renderer::~Renderer()
 {
-	delete m_pTexture;
+	delete m_pTexDiffuse;
 	delete[] m_pDepthBufferPixels;
 }
 
@@ -254,14 +254,15 @@ void Renderer::RenderTriangle(const Vertex_Out& _v0, const Vertex_Out& _v1, cons
 
 void Renderer::PixelShading(const Vertex_Out& v)
 {
-	Vector3 lightDirection = { .577f, -.577f, .577f };
+	Vector3 lightDirection{ .577f, -.577f, .577f };
+	float lightIntensity{ 7.f };
 	ColorRGB finalColor{};
 
 	//Observed area (lambert cosine law)
 	float dotProduct = v.normal * -lightDirection;
 	if (dotProduct >= 0.f)
 	{
-		finalColor += { dotProduct, dotProduct, dotProduct };
+		finalColor += Lambert(lightIntensity, m_pTexDiffuse->Sample(v.uv)) * dotProduct;
 	}
 
 

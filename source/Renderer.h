@@ -34,7 +34,7 @@ namespace dae
 
 	private:
 		SDL_Window* m_pWindow{};
-		Texture* m_pTexture{ nullptr };
+		Texture* m_pTexDiffuse{ nullptr };
 		Mesh m_Mesh{};
 		float m_Rotation{};
 
@@ -69,4 +69,10 @@ namespace dae
 		void VertexTransformationFunction(std::vector<Mesh>& meshes) const;
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex_Out>& vertices_out, const Matrix& worldMatrix) const;
 	};
+
+	//TODO: add seperate files for material/BRDF functions
+	static ColorRGB Lambert(float kd, const ColorRGB& cd)
+	{
+		return (cd * kd) / PI;
+	}
 }
