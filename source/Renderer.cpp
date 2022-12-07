@@ -36,6 +36,8 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	//Initialize Texture
 	m_pTexDiffuse =  Texture::LoadFromFile("Resources/vehicle_diffuse.png");
 	m_pTexNormal =	 Texture::LoadFromFile("Resources/vehicle_normal.png");
+	m_pTexGloss =	 Texture::LoadFromFile("Resources/vehicle_gloss.png");
+	m_pTexSpecular = Texture::LoadFromFile("Resources/vehicle_specular.png");
 	Utils::ParseOBJ("Resources/vehicle.obj", m_Mesh.vertices, m_Mesh.indices);
 	m_Mesh.primitiveTopology = PrimitiveTopology::TriangeList;
 }
@@ -44,6 +46,8 @@ Renderer::~Renderer()
 {
 	delete m_pTexDiffuse;
 	delete m_pTexNormal;
+	delete m_pTexGloss;
+	delete m_pTexSpecular;
 	delete[] m_pDepthBufferPixels;
 }
 
@@ -258,7 +262,20 @@ void Renderer::PixelShading(const Vertex_Out& v)
 {
 	Vector3 lightDirection{ .577f, -.577f, .577f };
 	float lightIntensity{ 7.f };
+	float shininess{ 25.f };
 	ColorRGB finalColor{};
+
+	//calculate view direction
+	const int px = v.position.x;
+	const int py = v.position.y;
+
+	float rx = px + 0.5f;
+	float ry = py + 0.5f;
+
+	float cx = (2 * (rx / float(m_Width)) - 1) * m_AspectRatio * m_Camera.fov;
+	float cy = (1 - (2 * (ry / float(m_Height)))) * m_Camera.fov;
+
+	Vector3 viewDirection = (cx * m_Camera.right + cy * m_Camera.up + m_Camera.forward).Normalized();
 
 	//Normal map
 	Vector3 binormal = Vector3::Cross(v.normal, v.tangent);
@@ -274,6 +291,7 @@ void Renderer::PixelShading(const Vertex_Out& v)
 	if (dotProduct >= 0.f)
 	{
 		finalColor += Lambert(lightIntensity, m_pTexDiffuse->Sample(v.uv)) * dotProduct;
+		finalColor += Phong(m_pTexSpecular->Sample(v.uv), shininess * m_pTexGloss->Sample(v.uv).r, -lightDirection, viewDirection, sampledNormal) * dotProduct;
 	}
 
 

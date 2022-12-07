@@ -36,6 +36,8 @@ namespace dae
 		SDL_Window* m_pWindow{};
 		Texture* m_pTexDiffuse{ nullptr };
 		Texture* m_pTexNormal{ nullptr };
+		Texture* m_pTexGloss{ nullptr };
+		Texture* m_pTexSpecular{ nullptr };
 		Mesh m_Mesh{};
 		float m_Rotation{};
 
@@ -75,5 +77,12 @@ namespace dae
 	static ColorRGB Lambert(float kd, const ColorRGB& cd)
 	{
 		return (cd * kd) / PI;
+	}
+	static ColorRGB Phong(ColorRGB ks, float exp, const Vector3& l, const Vector3& v, const Vector3& n)
+	{
+		Vector3 r = l - (n * (2.f * (n * l)));
+		float dot = r * v;
+		if (dot < 0.f) return {};
+		return ks * powf(dot, exp);
 	}
 }
